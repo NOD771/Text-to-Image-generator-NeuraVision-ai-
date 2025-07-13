@@ -1,6 +1,6 @@
 torch
-gradio
-transformers
 diffusers
-safetensors
-gdown
+transformers
+peft
+gradio
+accelerate
