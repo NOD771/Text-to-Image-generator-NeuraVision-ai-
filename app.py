@@ -1,20 +1,27 @@
-import os
-import gdown
-import gradio as gr
 import torch
-from diffusers import StableDiffusionPipeline
+from diffusers import StableDiffusionXLPipeline, LCMScheduler
+import gradio as gr
 
-# Download model if not already present
-if not os.path.exists("model.safetensors"):
-    gdown.download("https://drive.google.com/uc?id=1ErCyGDdmZl8056BiBsfWbDj02zA_sgC-", "model.safetensors", quiet=False)
+base_model_id = "stabilityai/stable-diffusion-xl-base-1.0"
+pipe = StableDiffusionXLPipeline.from_pretrained(
+    base_model_id,
+    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+    variant="fp16" if torch.cuda.is_available() else None,
+    use_safetensors=True
+)
 
-# Load the model
-pipe = StableDiffusionPipeline.from_single_file("model.safetensors", torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32)
-pipe = pipe.to("cuda" if torch.cuda.is_available() else "cpu")
+# Your LoRA HF repo
+pipe.load_lora_weights("Wiuhh/NeuraVisionlorar1")
+pipe.scheduler = LCMScheduler.from_config(pipe.scheduler.config)
+pipe.to("cuda" if torch.cuda.is_available() else "cpu")
 
-# Gradio interface
 def generate(prompt):
-    result = pipe(prompt).images[0]
-    return result
+    image = pipe(prompt=prompt, num_inference_steps=25, guidance_scale=7.5).images[0]
+    return image
 
-gr.Interface(fn=generate, inputs="text", outputs="image", title="My AI Model").launch()
+gr.Interface(
+    fn=generate,
+    inputs=gr.Textbox(label="Prompt"),
+    outputs=gr.Image(label="Result"),
+    title="LoRA SDXL Generator"
+).launch()
